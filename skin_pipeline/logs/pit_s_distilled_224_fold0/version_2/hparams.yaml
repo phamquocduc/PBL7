@@ -1,0 +1,3 @@
+backbone: pit_s_distilled_224
+meta_dim: 88
+use_metablock: true
