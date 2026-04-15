@@ -1,0 +1,17 @@
+kagglehub
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+ipykernel
+imbalanced-learn
+xgboost
+lightgbm
+torch
+torchvision
+numpy<2
+albumentations
+opencv-python-headless
+tqdm
+grad-cam
