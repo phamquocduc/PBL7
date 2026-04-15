@@ -93,8 +93,10 @@ def get_dataloaders(batch_size=32):
     train_ds = MultiModalDataset('train_img_mapping.csv', 'X_train_before_selection.csv', img_paths)
     test_ds = MultiModalDataset('test_img_mapping.csv', 'X_test_before_selection.csv', img_paths)
     
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    import multiprocessing
+    num_w = 4 if multiprocessing.cpu_count() >= 4 else 2
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_w, pin_memory=True)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_w, pin_memory=True)
     
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     target_path = os.path.join(repo_root, 'Data_handle', 'data', 'train_img_mapping.csv')
