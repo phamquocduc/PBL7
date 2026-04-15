@@ -95,8 +95,8 @@ def get_dataloaders(batch_size=32):
     
     import multiprocessing
     num_w = 4 if multiprocessing.cpu_count() >= 4 else 2
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_w, pin_memory=True)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_w, pin_memory=True)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_w, pin_memory=True, persistent_workers=True)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_w, pin_memory=True, persistent_workers=True)
     
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     target_path = os.path.join(repo_root, 'Data_handle', 'data', 'train_img_mapping.csv')
