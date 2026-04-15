@@ -42,7 +42,7 @@ class MultiModalDataset(Dataset):
         assert len(self.df_map) == len(self.df_tab), "Độ dài file ảnh và bảng không khớp tịnh tiến!"
         
         self.base_transforms = A.Compose([
-            A.Resize(224, 224),
+            A.Resize(384, 384),
             A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2()
         ])
@@ -52,7 +52,9 @@ class MultiModalDataset(Dataset):
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.RandomBrightnessContrast(p=0.7),
-            A.Resize(224, 224),
+            A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1, p=0.5),
+            A.Resize(384, 384),
+            A.CoarseDropout(max_holes=8, max_height=32, max_width=32, min_holes=1, min_height=8, min_width=8, fill_value=0, p=0.5),
             A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2()
         ])
@@ -70,11 +72,11 @@ class MultiModalDataset(Dataset):
             img_path = self.img_paths_dict[img_name]
             image = cv2.imread(img_path)
             if image is None: 
-                image = np.zeros((224, 224, 3), dtype=np.uint8)
+                image = np.zeros((384, 384, 3), dtype=np.uint8)
             else: 
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         else:
-            image = np.zeros((224, 224, 3), dtype=np.uint8)
+            image = np.zeros((384, 384, 3), dtype=np.uint8)
             
         is_syn = row_map.get('is_synthetic', 0)
         if is_syn == 1:
