@@ -28,7 +28,7 @@ def get_device():
     return torch.device("cpu")
 
 class MultiModalDataset(Dataset):
-    def __init__(self, mapping_csv, tabular_csv, img_paths_dict):
+    def __init__(self, mapping_csv, tabular_csv, img_paths_dict, use_advanced_aug=False):
         # Construct absolute paths relative to execution dir inside subfolders
         # The execution dir will be e.g. src/Model_training/Late_Fusion
         # so data is at ../../Data_handle/data/...
@@ -41,21 +41,43 @@ class MultiModalDataset(Dataset):
         
         assert len(self.df_map) == len(self.df_tab), "Độ dài file ảnh và bảng không khớp tịnh tiến!"
         
-        self.base_transforms = A.Compose([
-            A.Resize(224, 224),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            ToTensorV2()
-        ])
-        
-        self.heavy_transforms = A.Compose([
-            A.Rotate(limit=45, p=0.8),
-            A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.RandomBrightnessContrast(p=0.7),
-            A.Resize(224, 224),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            ToTensorV2()
-        ])
+        if not use_advanced_aug:
+            self.base_transforms = A.Compose([
+                A.Resize(224, 224),
+                A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                ToTensorV2()
+            ])
+            
+            self.heavy_transforms = A.Compose([
+                A.Rotate(limit=45, p=0.8),
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.RandomBrightnessContrast(p=0.7),
+                A.Resize(224, 224),
+                A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                ToTensorV2()
+            ])
+        else:
+            self.base_transforms = A.Compose([
+                A.CenterCrop(height=201, width=201, p=1.0),
+                A.Resize(224, 224),
+                A.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
+                A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                ToTensorV2()
+            ])
+            
+            self.heavy_transforms = A.Compose([
+                A.CenterCrop(height=201, width=201, p=1.0),
+                A.Resize(224, 224),
+                A.Rotate(limit=45, p=0.8),
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
+                A.Sharpen(alpha=(0.2, 0.5), lightness=(0.5, 1.0), p=0.7),
+                A.RandomBrightnessContrast(p=0.7),
+                A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                ToTensorV2()
+            ])
 
     def __len__(self):
         return len(self.df_map)
@@ -88,10 +110,10 @@ class MultiModalDataset(Dataset):
         
         return img_tensor, tab_tensor, label
 
-def get_dataloaders(batch_size=32):
+def get_dataloaders(batch_size=32, use_advanced_aug=False):
     img_paths = get_kaggle_img_paths()
-    train_ds = MultiModalDataset('train_img_mapping.csv', 'X_train_before_selection.csv', img_paths)
-    test_ds = MultiModalDataset('test_img_mapping.csv', 'X_test_before_selection.csv', img_paths)
+    train_ds = MultiModalDataset('train_img_mapping.csv', 'X_train_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug)
+    test_ds = MultiModalDataset('test_img_mapping.csv', 'X_test_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug)
     
     import multiprocessing
     num_w = 4 if multiprocessing.cpu_count() >= 4 else 2
