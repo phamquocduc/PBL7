@@ -59,16 +59,16 @@ class MultiModalDataset(Dataset):
             ])
         else:
             self.base_transforms = A.Compose([
-                A.CenterCrop(height=201, width=201, p=1.0),
-                A.Resize(224, 224),
+                A.Resize(256, 256),
+                A.CenterCrop(height=224, width=224, p=1.0),
                 A.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
                 A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
                 ToTensorV2()
             ])
             
             self.heavy_transforms = A.Compose([
-                A.CenterCrop(height=201, width=201, p=1.0),
-                A.Resize(224, 224),
+                A.Resize(256, 256),
+                A.CenterCrop(height=224, width=224, p=1.0),
                 A.Rotate(limit=45, p=0.8),
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
