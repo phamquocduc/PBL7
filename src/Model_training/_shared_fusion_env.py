@@ -28,7 +28,7 @@ def get_device():
     return torch.device("cpu")
 
 class MultiModalDataset(Dataset):
-    def __init__(self, mapping_csv, tabular_csv, img_paths_dict, use_advanced_aug=False, data_folder='data'):
+    def __init__(self, mapping_csv, tabular_csv, img_paths_dict, use_advanced_aug=False, data_folder='data', is_train=True):
         # Construct absolute paths relative to execution dir inside subfolders
         # The execution dir will be e.g. src/Model_training/Late_Fusion
         # so data is at ../../Data_handle/data/...
@@ -38,6 +38,8 @@ class MultiModalDataset(Dataset):
         self.df_map = pd.read_csv(os.path.join(data_dir, mapping_csv))
         self.df_tab = pd.read_csv(os.path.join(data_dir, tabular_csv)).astype(float)
         self.img_paths_dict = img_paths_dict
+        self.is_train = is_train
+        self.is_no_smote = (data_folder == 'data_no_smote')
         
         assert len(self.df_map) == len(self.df_tab), "Độ dài file ảnh và bảng không khớp tịnh tiến!"
         
@@ -94,11 +96,17 @@ class MultiModalDataset(Dataset):
         else:
             image = np.zeros((224, 224, 3), dtype=np.uint8)
             
-        is_syn = row_map.get('is_synthetic', 0)
-        if is_syn == 1:
-            aug = self.heavy_transforms(image=image)
+        if self.is_no_smote:
+            if self.is_train:
+                aug = self.heavy_transforms(image=image)
+            else:
+                aug = self.base_transforms(image=image)
         else:
-            aug = self.base_transforms(image=image)
+            is_syn = row_map.get('is_synthetic', 0)
+            if is_syn == 1:
+                aug = self.heavy_transforms(image=image)
+            else:
+                aug = self.base_transforms(image=image)
             
         img_tensor = aug['image']
         tab_tensor = torch.tensor(self.df_tab.iloc[idx].values, dtype=torch.float32)
@@ -108,8 +116,8 @@ class MultiModalDataset(Dataset):
 
 def get_dataloaders(batch_size=32, use_advanced_aug=False, data_folder='data'):
     img_paths = get_kaggle_img_paths()
-    train_ds = MultiModalDataset('train_img_mapping.csv', 'X_train_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug, data_folder=data_folder)
-    test_ds = MultiModalDataset('test_img_mapping.csv', 'X_test_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug, data_folder=data_folder)
+    train_ds = MultiModalDataset('train_img_mapping.csv', 'X_train_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug, data_folder=data_folder, is_train=True)
+    test_ds = MultiModalDataset('test_img_mapping.csv', 'X_test_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug, data_folder=data_folder, is_train=False)
     
     import multiprocessing
     num_w = 4 if multiprocessing.cpu_count() >= 4 else 2
