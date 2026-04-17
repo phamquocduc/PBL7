@@ -28,12 +28,12 @@ def get_device():
     return torch.device("cpu")
 
 class MultiModalDataset(Dataset):
-    def __init__(self, mapping_csv, tabular_csv, img_paths_dict, use_advanced_aug=False):
+    def __init__(self, mapping_csv, tabular_csv, img_paths_dict, use_advanced_aug=False, data_folder='data'):
         # Construct absolute paths relative to execution dir inside subfolders
         # The execution dir will be e.g. src/Model_training/Late_Fusion
         # so data is at ../../Data_handle/data/...
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # this script is in Model_training
-        data_dir = os.path.join(repo_root, 'Data_handle', 'data')
+        data_dir = os.path.join(repo_root, 'Data_handle', data_folder)
         
         self.df_map = pd.read_csv(os.path.join(data_dir, mapping_csv))
         self.df_tab = pd.read_csv(os.path.join(data_dir, tabular_csv)).astype(float)
@@ -106,10 +106,10 @@ class MultiModalDataset(Dataset):
         
         return img_tensor, tab_tensor, label
 
-def get_dataloaders(batch_size=32, use_advanced_aug=False):
+def get_dataloaders(batch_size=32, use_advanced_aug=False, data_folder='data'):
     img_paths = get_kaggle_img_paths()
-    train_ds = MultiModalDataset('train_img_mapping.csv', 'X_train_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug)
-    test_ds = MultiModalDataset('test_img_mapping.csv', 'X_test_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug)
+    train_ds = MultiModalDataset('train_img_mapping.csv', 'X_train_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug, data_folder=data_folder)
+    test_ds = MultiModalDataset('test_img_mapping.csv', 'X_test_before_selection.csv', img_paths, use_advanced_aug=use_advanced_aug, data_folder=data_folder)
     
     import multiprocessing
     num_w = 4 if multiprocessing.cpu_count() >= 4 else 2
@@ -117,7 +117,7 @@ def get_dataloaders(batch_size=32, use_advanced_aug=False):
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_w, pin_memory=True, persistent_workers=True)
     
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    target_path = os.path.join(repo_root, 'Data_handle', 'data', 'train_img_mapping.csv')
+    target_path = os.path.join(repo_root, 'Data_handle', data_folder, 'train_img_mapping.csv')
     y_train = pd.read_csv(target_path)['target']
     counts = np.bincount(y_train)
     weights = 1.0 / (counts + 1e-6)
