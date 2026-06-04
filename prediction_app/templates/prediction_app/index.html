@@ -1,0 +1,286 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaDerm: Phân Loại Tổn Thương Da Đa Phương Thức</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+    <div class="glass-background"></div>
+    
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo">
+                <h1>MetaDerm</h1>
+            </div>
+            <span class="badge">Trí tuệ nhân tạo đa phương thức (EfficientNet + Kết hợp lâm sàng)</span>
+        </div>
+    </header>
+ 
+    <main class="app-container">
+        <section class="intro-section">
+            <h2>Hệ thống Hỗ trợ Chẩn đoán Tổn thương Da</h2>
+            <p>Tải lên ảnh da liễu và cung cấp các thông số lâm sàng. Mô hình học sâu MetaBlock Fusion của chúng tôi sẽ kết hợp phân tích các đặc trưng hình ảnh và bệnh sử để dự đoán bệnh lý da.</p>
+        </section>
+ 
+        <div class="dashboard-grid">
+            <!-- Left Side: Interactive Input Panel -->
+            <div class="card input-card">
+                <div class="card-tabs">
+                    <button type="button" class="tab-btn active" data-tab="single-tab">
+                        Chẩn đoán Đơn lẻ
+                    </button>
+                    <button type="button" class="tab-btn" data-tab="batch-tab">
+                        Chẩn đoán Hàng loạt
+                    </button>
+                </div>
+                
+                <div id="single-tab-content" class="tab-content active">
+                    <form id="prediction-form" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Image Dropzone -->
+                        <div class="form-group">
+                            <label class="field-label">Ảnh da liễu</label>
+                            <div class="dropzone" id="image-dropzone">
+                                <input type="file" name="image" id="image-input" accept="image/*" required hidden>
+                                <div class="dropzone-content" id="dropzone-prompt">
+                                    <i class="fa-solid fa-cloud-arrow-up upload-cloud-icon"></i>
+                                    <p class="main-prompt">Kéo & Thả ảnh vào đây</p>
+                                    <p class="sub-prompt">hoặc nhấp để chọn tệp từ thiết bị (JPEG, PNG)</p>
+                                </div>
+                                <div class="preview-container" id="image-preview-container" style="display: none;">
+                                    <img src="" alt="Xem trước tổn thương" id="image-preview">
+                                    <div class="image-info-badge" style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+                                        <span id="image-filename"></span>
+                                    </div>
+                                    <button type="button" class="btn btn-danger btn-sm remove-image-btn" id="btn-remove-image">
+                                        Thay đổi ảnh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+ 
+                        <!-- Clinical Tabular Features -->
+                        <div class="clinical-inputs-row">
+                            <!-- Age Input -->
+                            <div class="form-group full-width-field">
+                                <label class="field-label" for="age-input">Tuổi của bệnh nhân</label>
+                                <input type="number" name="age" id="age-input" min="0" max="120" value="50" class="styled-input" placeholder="Ví dụ: 50" required>
+                            </div>
+ 
+                            <!-- Sex Field -->
+                            <div class="form-group half-width-field">
+                                <label class="field-label" for="sex-select">Giới tính</label>
+                                <div class="select-wrapper">
+                                    <select name="sex" id="sex-select" required class="styled-select">
+                                        {% for val, label in sex_options %}
+                                            <option value="{{ val }}" {% if val == 'Unknown' %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <i class="fa-solid fa-chevron-down select-arrow"></i>
+                                </div>
+                            </div>
+ 
+                            <!-- Localization Field -->
+                            <div class="form-group half-width-field">
+                                <label class="field-label" for="localization-select">Vị trí giải phẫu</label>
+                                <div class="select-wrapper">
+                                    <select name="localization" id="localization-select" required class="styled-select">
+                                        {% for val, label in localization_options %}
+                                            <option value="{{ val }}" {% if val == 'Unknown' %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <i class="fa-solid fa-chevron-down select-arrow"></i>
+                                </div>
+                            </div>
+                        </div>
+ 
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary btn-block btn-diagnose" id="btn-submit">
+                            <span id="btn-text">Thực hiện chẩn đoán</span>
+                            <span id="btn-spinner" class="spinner" style="display: none;"></span>
+                        </button>
+                    </form>
+                </div>
+ 
+                <div id="batch-tab-content" class="tab-content">
+                    <form id="batch-prediction-form" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <!-- CSV File Dropzone -->
+                        <div class="form-group">
+                            <label class="field-label">Tệp CSV Metadata (Định dạng HAM10000)</label>
+                            <div class="dropzone" id="csv-dropzone">
+                                <input type="file" name="csv_file" id="csv-input" accept=".csv" required hidden>
+                                <div class="dropzone-content" id="csv-prompt">
+                                    <i class="fa-solid fa-cloud-arrow-up upload-cloud-icon"></i>
+                                    <p class="main-prompt">Kéo & Thả tệp CSV vào đây</p>
+                                    <p class="sub-prompt">Yêu cầu chứa các cột: <code>image_id</code>, <code>age</code>, <code>sex</code>, <code>localization</code></p>
+                                </div>
+                                <div class="preview-container" id="csv-preview-container" style="display: none;">
+                                    <div class="csv-info-badge">
+                                        <span id="csv-filename">metadata.csv</span>
+                                    </div>
+                                    <button type="button" class="btn btn-danger btn-sm remove-image-btn" id="btn-remove-csv">
+                                        Thay đổi CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+ 
+                        <!-- Multiple Images Dropzone -->
+                        <div class="form-group">
+                            <label class="field-label">Tải lên hàng loạt ảnh tổn thương da</label>
+                            <div class="dropzone" id="batch-images-dropzone">
+                                <input type="file" name="images" id="batch-images-input" accept="image/*" multiple required hidden>
+                                <div class="dropzone-content" id="batch-images-prompt">
+                                    <i class="fa-solid fa-cloud-arrow-up upload-cloud-icon"></i>
+                                    <p class="main-prompt">Kéo & Thả các tệp ảnh vào đây</p>
+                                    <p class="sub-prompt">Chọn tất cả các ảnh tương ứng có trong danh sách tệp CSV</p>
+                                </div>
+                                <div class="preview-container" id="batch-images-preview-container" style="display: none;">
+                                    <div class="images-count-badge">
+                                        <span id="batch-images-count">0 ảnh đã được chọn</span>
+                                    </div>
+                                    <button type="button" class="btn btn-danger btn-sm remove-image-btn" id="btn-remove-batch-images">
+                                        Xóa các ảnh đã chọn
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+ 
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary btn-block btn-diagnose" id="btn-batch-submit">
+                            <span id="btn-batch-text">Thực hiện chẩn đoán hàng loạt</span>
+                            <span id="btn-batch-spinner" class="spinner" style="display: none;"></span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+ 
+            <div class="card output-card">
+                <div class="card-header">
+                    <h3>Kết quả phân tích</h3>
+                </div>
+                
+                <!-- Idle State: Waiting for inputs -->
+                <div class="output-idle" id="output-idle-state">
+                    <h4>Đang chờ chẩn đoán</h4>
+                    <p>Hãy tải lên hình ảnh tổn thương da và thiết lập các thông tin lâm sàng, sau đó nhấn "Thực hiện chẩn đoán".</p>
+                </div>
+ 
+                <!-- Active State: Loading spinner (fallback if javascript is running) -->
+                <div class="output-loading" id="output-loading-state" style="display: none;">
+                    <div class="loading-ring"><div></div><div></div><div></div><div></div></div>
+                    <h4>Đang phân tích tổn thương...</h4>
+                    <p>Đang xử lý vector đặc trưng & chạy mô hình MetaBlock Fusion.</p>
+                </div>
+ 
+                <!-- Success State: Display results -->
+                <div class="output-success" id="output-success-state" style="display: none;">
+                    <div class="result-summary-card">
+                        <div class="result-preview-image">
+                            <img src="" alt="Tổn thương đã phân tích" id="result-img">
+                        </div>
+                        <div class="result-top-match">
+                            <span class="result-label">BỆNH LÝ CHÍNH</span>
+                            <h2 id="top-class-name">Nốt ruồi hắc tố lành tính</h2>
+                            <div class="probability-badge" id="top-probability-badge">98.5% Độ tin cậy</div>
+                            <div class="result-meta">
+                                <span>Giới tính: <strong id="result-sex-val">Nam</strong>, <strong id="result-age-val">45</strong> tuổi</span>
+                                <span class="separator">•</span>
+                                <span>Vị trí: <strong id="result-loc-val">Lưng</strong></span>
+                            </div>
+                        </div>
+                    </div>
+ 
+                    <div class="diagnosis-description">
+                        <h5>Thông tin chi tiết về bệnh lý</h5>
+                        <p id="top-class-description">Mô tả bệnh lý chính.</p>
+                    </div>
+ 
+                    <div class="distribution-section">
+                        <h5>Phân phối xác suất chẩn đoán</h5>
+                        <div class="distribution-bars-list" id="distribution-bars-container">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                    
+                    <div class="medical-disclaimer">
+                        <p><strong>Khuyến cáo:</strong> Chẩn đoán này được tạo bởi thuật toán AI thử nghiệm. Hệ thống chỉ dùng cho mục đích giáo dục và hỗ trợ nghiên cứu, KHÔNG thay thế cho việc đánh giá y khoa chuyên nghiệp, xét nghiệm sinh thiết hoặc chẩn đoán lâm sàng của bác sĩ chuyên khoa.</p>
+                    </div>
+                </div>
+ 
+                <!-- Batch Success State: Display batch results -->
+                <div class="output-success" id="output-batch-success-state" style="display: none;">
+                    <div class="batch-results-header">
+                        <div class="batch-metrics">
+                            <div class="metric-card">
+                                <span class="metric-value" id="batch-total-count">0</span>
+                                <span class="metric-label">Tổng số dòng</span>
+                            </div>
+                            <div class="metric-card">
+                                <span class="metric-value" id="batch-predicted-count">0</span>
+                                <span class="metric-label">Đã chẩn đoán</span>
+                            </div>
+                        </div>
+                        <div class="batch-controls">
+                            <div class="view-toggle-container">
+                                <button type="button" class="view-toggle-btn active" id="view-toggle-gallery">Dạng thẻ</button>
+                                <button type="button" class="view-toggle-btn" id="view-toggle-table">Dạng bảng</button>
+                            </div>
+                            <a href="" id="batch-download-btn" class="btn btn-sm btn-download-csv" download>
+                                Tải xuống CSV
+                            </a>
+                        </div>
+                    </div>
+ 
+                    <!-- Gallery Wrapper (active by default) -->
+                    <div class="batch-grid-wrapper" id="batch-grid-wrapper">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+ 
+                    <!-- Table Wrapper (hidden by default) -->
+                    <div class="batch-table-wrapper" id="batch-table-wrapper" style="display: none;">
+                        <table class="batch-table">
+                            <thead>
+                                <tr>
+                                    <th>Mã ảnh (ID)</th>
+                                    <th>Tuổi</th>
+                                    <th>Giới tính</th>
+                                    <th>Vị trí</th>
+                                    <th>Chẩn đoán</th>
+                                    <th>Độ tin cậy</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batch-table-body">
+                                <!-- Populated dynamically via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+ 
+                    <div class="medical-disclaimer" style="margin-top: 1.5rem;">
+                        <p><strong>Khuyến cáo:</strong> Kết quả chẩn đoán hàng loạt bằng AI. Chỉ mang tính chất tham khảo thử nghiệm, không thay thế cho bác sĩ chuyên khoa.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+ 
+    <footer class="app-footer">
+        <p>&copy; 2026 Nghiên cứu MetaDerm ML. Phát triển trên nền tảng Django & PyTorch.</p>
+    </footer>
+ 
+    <!-- Custom JS -->
+    <script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>

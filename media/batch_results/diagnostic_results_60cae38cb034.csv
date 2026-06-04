@@ -1,0 +1,3 @@
+image_id,age,sex,localization,predicted_class,confidence,akiec,bcc,bkl,df,mel,nv,vasc
+test_lesion,45,male,back,nv,93.07%,1.0%,0.63%,1.65%,0.8%,1.92%,93.07%,0.93%
+test_lesion_missing,60,female,face,IMAGE NOT FOUND,N/A,,,,,,,

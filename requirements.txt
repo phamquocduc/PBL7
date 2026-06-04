@@ -16,3 +16,4 @@ opencv-python-headless
 tqdm
 grad-cam
 timm
+django

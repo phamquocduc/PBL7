@@ -1,0 +1,3 @@
+image_id,age,sex,localization
+test_lesion,45,male,back
+test_lesion_missing,60,female,face
