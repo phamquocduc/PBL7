@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Global variable for batch files list
+    let selectedBatchFiles = [];
+
     // DOM Elements - Single Mode
     const dropzone = document.getElementById('image-dropzone');
     const imageInput = document.getElementById('image-input');
@@ -136,9 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Drag and Drop Actions
     if (dropzone) {
         dropzone.addEventListener('click', () => {
-            if (imageInput.files.length === 0) {
-                imageInput.click();
-            }
+            imageInput.click();
         });
 
         dropzone.addEventListener('dragover', (e) => {
@@ -349,9 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // CSV Dropzone Drag and Drop
     if (csvDropzone) {
         csvDropzone.addEventListener('click', () => {
-            if (csvInput.files.length === 0) {
-                csvInput.click();
-            }
+            csvInput.click();
         });
 
         csvDropzone.addEventListener('dragover', (e) => {
@@ -411,12 +410,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
                 
                 let existingPreview = document.getElementById('csv-table-preview');
-                if (!existingPreview) {
-                    existingPreview = document.createElement('div');
-                    existingPreview.id = 'csv-table-preview';
-                    csvPreviewContainer.insertBefore(existingPreview, csvPreviewContainer.lastElementChild);
+                if (existingPreview) {
+                    existingPreview.innerHTML = previewHtml;
                 }
-                existingPreview.innerHTML = previewHtml;
             }
         };
         reader.readAsText(file);
@@ -451,9 +447,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Batch Images Drag and Drop
     if (batchImagesDropzone) {
         batchImagesDropzone.addEventListener('click', () => {
-            if (batchImagesInput.files.length === 0) {
-                batchImagesInput.click();
-            }
+            batchImagesInput.click();
         });
 
         batchImagesDropzone.addEventListener('dragover', (e) => {
@@ -483,32 +477,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleBatchImagesSelect(files) {
-        const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-        if (imageFiles.length === 0) {
+        selectedBatchFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+        if (selectedBatchFiles.length === 0) {
             alert('Không tìm thấy tệp tin hình ảnh nào trong phần chọn của bạn.');
             return;
         }
+        renderBatchThumbnails();
+    }
 
-        batchImagesCount.textContent = `Đã chọn ${imageFiles.length} ảnh`;
+    function renderBatchThumbnails() {
+        if (selectedBatchFiles.length === 0) {
+            batchImagesInput.value = '';
+            batchImagesPrompt.style.display = 'flex';
+            batchImagesPreviewContainer.style.display = 'none';
+            const thumbnailGrid = document.getElementById('batch-images-thumbnail-grid');
+            if (thumbnailGrid) {
+                thumbnailGrid.innerHTML = '';
+            }
+            return;
+        }
+
+        batchImagesCount.textContent = `Đã chọn ${selectedBatchFiles.length} ảnh`;
         batchImagesPrompt.style.display = 'none';
         batchImagesPreviewContainer.style.display = 'block';
 
         // Render thumbnails grid
         let thumbnailGrid = document.getElementById('batch-images-thumbnail-grid');
-        if (!thumbnailGrid) {
-            thumbnailGrid = document.createElement('div');
-            thumbnailGrid.id = 'batch-images-thumbnail-grid';
-            thumbnailGrid.className = 'thumbnail-grid';
-            batchImagesPreviewContainer.insertBefore(thumbnailGrid, batchImagesPreviewContainer.lastElementChild);
+        if (thumbnailGrid) {
+            thumbnailGrid.innerHTML = '';
         }
-        thumbnailGrid.innerHTML = '';
 
         const maxThumbnails = 6;
-        const filesToShow = imageFiles.slice(0, maxThumbnails);
+        const filesToShow = selectedBatchFiles.slice(0, maxThumbnails);
         
         filesToShow.forEach((file, idx) => {
             const thumbDiv = document.createElement('div');
             thumbDiv.className = 'thumbnail-item';
+            thumbDiv.style.position = 'relative';
             
             const img = document.createElement('img');
             const reader = new FileReader();
@@ -518,31 +523,44 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsDataURL(file);
             thumbDiv.appendChild(img);
             
-            if (idx === maxThumbnails - 1 && imageFiles.length > maxThumbnails) {
+            // Add a floating remove button for this specific thumbnail
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-btn-floating-thumbnail';
+            removeBtn.title = 'Xóa ảnh này';
+            removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // prevent dropzone click trigger
+                removeImageFromBatch(idx);
+            });
+            thumbDiv.appendChild(removeBtn);
+            
+            if (idx === maxThumbnails - 1 && selectedBatchFiles.length > maxThumbnails) {
                 const overlay = document.createElement('div');
                 overlay.className = 'thumbnail-overlay';
-                overlay.textContent = `+${imageFiles.length - maxThumbnails}`;
+                overlay.textContent = `+${selectedBatchFiles.length - maxThumbnails}`;
                 thumbDiv.appendChild(overlay);
             }
             
             thumbnailGrid.appendChild(thumbDiv);
         });
 
+        // Sync files to batchImagesInput.files
         const dataTransfer = new DataTransfer();
-        imageFiles.forEach(f => dataTransfer.items.add(f));
+        selectedBatchFiles.forEach(f => dataTransfer.items.add(f));
         batchImagesInput.files = dataTransfer.files;
+    }
+
+    function removeImageFromBatch(index) {
+        selectedBatchFiles.splice(index, 1);
+        renderBatchThumbnails();
     }
 
     if (btnRemoveBatchImages) {
         btnRemoveBatchImages.addEventListener('click', (e) => {
             e.stopPropagation();
-            batchImagesInput.value = '';
-            batchImagesPrompt.style.display = 'flex';
-            batchImagesPreviewContainer.style.display = 'none';
-            const thumbnailGrid = document.getElementById('batch-images-thumbnail-grid');
-            if (thumbnailGrid) {
-                thumbnailGrid.innerHTML = '';
-            }
+            selectedBatchFiles = [];
+            renderBatchThumbnails();
         });
     }
 
@@ -611,14 +629,14 @@ document.addEventListener('DOMContentLoaded', () => {
             btnBatchSubmit.disabled = true;
             btnBatchText.style.display = 'none';
             btnBatchSpinner.style.display = 'inline-block';
-            btnRemoveCsv.disabled = true;
-            btnRemoveBatchImages.disabled = true;
+            if (btnRemoveCsv) btnRemoveCsv.disabled = true;
+            if (btnRemoveBatchImages) btnRemoveBatchImages.disabled = true;
         } else {
             btnBatchSubmit.disabled = false;
             btnBatchText.style.display = 'inline-flex';
             btnBatchSpinner.style.display = 'none';
-            btnRemoveCsv.disabled = false;
-            btnRemoveBatchImages.disabled = false;
+            if (btnRemoveCsv) btnRemoveCsv.disabled = false;
+            if (btnRemoveBatchImages) btnRemoveBatchImages.disabled = false;
         }
     }
 

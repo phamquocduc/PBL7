@@ -59,13 +59,15 @@
                                     <p class="sub-prompt">hoặc nhấp để chọn tệp từ thiết bị (JPEG, PNG)</p>
                                 </div>
                                 <div class="preview-container" id="image-preview-container" style="display: none;">
-                                    <img src="" alt="Xem trước tổn thương" id="image-preview">
+                                    <div class="preview-image-wrapper" style="position: relative; display: inline-block;">
+                                        <img src="" alt="Xem trước tổn thương" id="image-preview">
+                                        <button type="button" class="remove-btn-floating" id="btn-remove-image" title="Xóa ảnh">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
                                     <div class="image-info-badge" style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted); text-align: center;">
                                         <span id="image-filename"></span>
                                     </div>
-                                    <button type="button" class="btn btn-danger btn-sm remove-image-btn" id="btn-remove-image">
-                                        Thay đổi ảnh
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -127,12 +129,16 @@
                                     <p class="sub-prompt">Yêu cầu chứa các cột: <code>image_id</code>, <code>age</code>, <code>sex</code>, <code>localization</code></p>
                                 </div>
                                 <div class="preview-container" id="csv-preview-container" style="display: none;">
-                                    <div class="csv-info-badge">
-                                        <span id="csv-filename">metadata.csv</span>
+                                    <div class="csv-header-info">
+                                        <div class="csv-name-tag">
+                                            <i class="fa-solid fa-file-csv"></i>
+                                            <span id="csv-filename">metadata.csv</span>
+                                        </div>
+                                        <button type="button" class="remove-btn-floating" id="btn-remove-csv" title="Xóa tệp CSV" style="position: static;">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
                                     </div>
-                                    <button type="button" class="btn btn-danger btn-sm remove-image-btn" id="btn-remove-csv">
-                                        Thay đổi CSV
-                                    </button>
+                                    <div id="csv-table-preview"></div>
                                 </div>
                             </div>
                         </div>
@@ -148,12 +154,13 @@
                                     <p class="sub-prompt">Chọn tất cả các ảnh tương ứng có trong danh sách tệp CSV</p>
                                 </div>
                                 <div class="preview-container" id="batch-images-preview-container" style="display: none;">
-                                    <div class="images-count-badge">
-                                        <span id="batch-images-count">0 ảnh đã được chọn</span>
+                                    <div class="batch-images-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; width: 100%;">
+                                        <div class="images-count-badge-text" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 600; color: var(--primary-color);">
+                                            <i class="fa-solid fa-images"></i>
+                                            <span id="batch-images-count">0 ảnh đã được chọn</span>
+                                        </div>
                                     </div>
-                                    <button type="button" class="btn btn-danger btn-sm remove-image-btn" id="btn-remove-batch-images">
-                                        Xóa các ảnh đã chọn
-                                    </button>
+                                    <div id="batch-images-thumbnail-grid" class="thumbnail-grid"></div>
                                 </div>
                             </div>
                         </div>
