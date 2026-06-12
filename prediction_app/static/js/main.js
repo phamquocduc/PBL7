@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Global variable for batch files list
+    // Global variable for batch files list & current batch results
     let selectedBatchFiles = [];
+    let currentBatchResults = [];
 
     // DOM Elements - Single Mode
     const dropzone = document.getElementById('image-dropzone');
@@ -641,6 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderBatchResults(data) {
+        currentBatchResults = data.results || [];
         batchTotalCount.textContent = data.total_rows;
         batchPredictedCount.textContent = data.predicted_rows;
         batchDownloadBtn.href = data.download_url;
@@ -672,10 +674,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return classCodeNames[code.toLowerCase()] || code;
         }
 
-        data.results.forEach(res => {
+        data.results.forEach((res, index) => {
             // 1. Render Table row
             if (batchTableBody) {
                 const tr = document.createElement('tr');
+                tr.setAttribute('data-index', index);
                 
                 let predictionBadge = '';
                 if (res.success) {
@@ -738,6 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (batchGridWrapper) {
                 const card = document.createElement('div');
                 card.className = 'batch-result-card';
+                card.setAttribute('data-index', index);
                 
                 let predictionBadge = '';
                 let confidenceText = '';
@@ -817,6 +821,161 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 
                 batchGridWrapper.appendChild(card);
+            }
+        });
+    }
+
+    // ==========================================
+    // DIAGNOSTIC DETAILS MODAL INTERACTION LOGIC
+    // ==========================================
+    const detailsModal = document.getElementById('details-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const modalImage = document.getElementById('modal-image');
+    const modalImageDimensions = document.getElementById('modal-image-dimensions');
+    const modalViewOriginalBtn = document.getElementById('modal-view-original-btn');
+    const modalImageId = document.getElementById('modal-image-id');
+    const modalTopClassName = document.getElementById('modal-top-class-name');
+    const modalTopProbabilityBadge = document.getElementById('modal-top-probability-badge');
+    const modalAgeVal = document.getElementById('modal-age-val');
+    const modalSexVal = document.getElementById('modal-sex-val');
+    const modalLocVal = document.getElementById('modal-loc-val');
+    const modalClassDescription = document.getElementById('modal-class-description');
+    const modalDistributionBarsContainer = document.getElementById('modal-distribution-bars-container');
+    const modalBackdrop = detailsModal ? detailsModal.querySelector('.modal-backdrop') : null;
+
+    function showModalDetails(res) {
+        if (!res) return;
+
+        // Reset visibility state
+        modalImage.style.display = 'none';
+        modalImageDimensions.textContent = '';
+        modalViewOriginalBtn.style.display = 'none';
+
+        if (res.success) {
+            // Set up image elements
+            if (res.image_url) {
+                modalImage.src = res.image_url;
+                modalImage.style.display = 'block';
+                modalViewOriginalBtn.href = res.image_url;
+                modalViewOriginalBtn.style.display = 'inline-flex';
+                
+                // Get image dimension values dynamically
+                const tempImg = new Image();
+                tempImg.onload = function() {
+                    modalImageDimensions.textContent = `${this.naturalWidth} x ${this.naturalHeight}`;
+                };
+                tempImg.src = res.image_url;
+            } else {
+                modalImage.src = '';
+                modalImageDimensions.textContent = 'Không có ảnh';
+            }
+
+            modalImageId.textContent = res.image_id;
+            modalTopClassName.textContent = res.predicted_class_full_name;
+            modalTopProbabilityBadge.textContent = `${res.confidence} Độ tin cậy`;
+            modalTopProbabilityBadge.className = 'probability-badge';
+            
+            // Set tabular patient info
+            modalAgeVal.textContent = res.age !== undefined ? res.age : 'Không rõ';
+            modalSexVal.textContent = translate(res.sex);
+            modalLocVal.textContent = translate(res.localization);
+            
+            // Render Description
+            const topPrediction = res.all_predictions ? res.all_predictions[0] : null;
+            modalClassDescription.textContent = topPrediction ? topPrediction.description : 'Không có mô tả cho bệnh lý này.';
+
+            // Render distribution bars
+            modalDistributionBarsContainer.innerHTML = '';
+            if (res.all_predictions) {
+                res.all_predictions.forEach((item, index) => {
+                    const isTop = index === 0;
+                    const barItem = document.createElement('div');
+                    barItem.className = `bar-item ${isTop ? 'top-match-bar' : ''}`;
+
+                    barItem.innerHTML = `
+                        <div class="bar-labels">
+                            <span class="bar-name">${item.full_name} <small style="color:var(--text-muted)">(${item.class_code.toUpperCase()})</small></span>
+                            <span class="bar-pct ${isTop ? 'top-match-pct' : ''}">${item.percentage}%</span>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill" data-width="${item.percentage}%"></div>
+                        </div>
+                    `;
+                    modalDistributionBarsContainer.appendChild(barItem);
+                });
+
+                // Trigger animations after insertion
+                setTimeout(() => {
+                    const fills = modalDistributionBarsContainer.querySelectorAll('.bar-fill');
+                    fills.forEach(fill => {
+                        fill.style.width = fill.getAttribute('data-width');
+                    });
+                }, 100);
+            }
+        } else {
+            // Render failure details in modal
+            modalImage.style.display = 'none';
+            modalImageId.textContent = res.image_id;
+            modalTopClassName.textContent = 'Không thể phân tích';
+            modalTopProbabilityBadge.textContent = 'Thất bại';
+            modalTopProbabilityBadge.className = 'probability-badge dangerous-badge';
+            
+            modalAgeVal.textContent = '-';
+            modalSexVal.textContent = '-';
+            modalLocVal.textContent = '-';
+            
+            modalClassDescription.textContent = res.error || 'Đã xảy ra lỗi trong quá trình chẩn đoán mẫu này.';
+            modalDistributionBarsContainer.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Không có phân phối xác suất do chẩn đoán thất bại.</p>';
+        }
+
+        if (detailsModal) {
+            detailsModal.style.display = 'flex';
+            document.body.classList.add('modal-open');
+        }
+    }
+
+    function closeModal() {
+        if (detailsModal) {
+            detailsModal.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+    // Modal Close Triggers
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeModal);
+    }
+    if (modalBackdrop) {
+        modalBackdrop.addEventListener('click', closeModal);
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && detailsModal && detailsModal.style.display === 'flex') {
+            closeModal();
+        }
+    });
+
+    // Click delegation on table rows
+    if (batchTableBody) {
+        batchTableBody.addEventListener('click', (e) => {
+            const tr = e.target.closest('tr');
+            if (tr) {
+                const idx = tr.getAttribute('data-index');
+                if (idx !== null && currentBatchResults[idx]) {
+                    showModalDetails(currentBatchResults[idx]);
+                }
+            }
+        });
+    }
+
+    // Click delegation on gallery cards
+    if (batchGridWrapper) {
+        batchGridWrapper.addEventListener('click', (e) => {
+            const card = e.target.closest('.batch-result-card');
+            if (card) {
+                const idx = card.getAttribute('data-index');
+                if (idx !== null && currentBatchResults[idx]) {
+                    showModalDetails(currentBatchResults[idx]);
+                }
             }
         });
     }
